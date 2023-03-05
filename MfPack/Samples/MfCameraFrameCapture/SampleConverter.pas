@@ -373,8 +373,9 @@ var
   oOutputStreamInfo: MFT_OUTPUT_STREAM_INFO;
   iConvertStart: int64;
   iConvertEnd: int64;
-
+  iTimerFrequency : int64;
 begin
+  QueryPerformanceFrequency(iTimerFrequency);
   QueryPerformanceCounter(iConvertStart);
 
   Result := CheckSucceeded(FTransform.ProcessInput(0,
@@ -414,7 +415,7 @@ begin
   QueryPerformanceCounter(iConvertEnd);
   if Assigned(OnLog)  then
    OnLog(Format('ConvertSampleToRGB took %f milliseconds.',
-               [(iConvertEnd - iConvertStart) / TimerFrequency * 1000]),
+               [(iConvertEnd - iConvertStart) / iTimerFrequency * 1000]),
          ltDebug1);
 end;
 

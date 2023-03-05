@@ -140,7 +140,7 @@ type
     function GetBrightness: Integer;
     procedure SetBrightness(const AValue: Integer);
     function ConfigureVideoProcAmp(const AMediaSource: IMFMediaSource): Boolean;
-
+    function SetMediaType(const AMediaType: IMFMediaType): Boolean;
   protected
     FSourceReader: IMFSourceReader;
     FOnCalculateComplete: TOnCalculateComplete;
@@ -158,7 +158,6 @@ type
     procedure ResetFramesSkipped();
 
     function PopulateStreamFormats(): Boolean;
-    function SetMediaType(const AMediaType: IMFMediaType): Boolean;
     function PopulateFormatDetails(const AMediaFormat: IMFMediaType;
                                    var ADetails: TVideoFormat): Boolean;
     function ActiveDevice(const ADeviceSymbolicLink: PWideChar;
@@ -176,7 +175,7 @@ type
 
     function GetVideoFormat(AMediaTypeChanged: Boolean): Boolean;
 
-    procedure ProcessSample(ASample: IMFSample); virtual; abstract;
+    procedure ProcessSample(const ASample: IMFSample); virtual; abstract;
 
     procedure Log(const AMessage: string;
                   const AType: TLogType);
@@ -427,7 +426,6 @@ begin
     SafeRelease(pMediaType);
   end;
 end;
-
 
 function TCameraCapture.GetCurrentFormat(var AFormat: TVideoFormat): Boolean;
 var
@@ -872,8 +870,7 @@ begin
                                                    MF_MT_DEFAULT_STRIDE,
                                                    1);
 
-      SampleConverter.UpdateConverter(FManager,
-                                      pInputType);
+      SampleConverter.UpdateConverter(FManager, pInputType);
     end;
 end;
 

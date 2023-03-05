@@ -76,12 +76,12 @@ uses
   {Application}
   CameraCapture,
   MessageHandler,
-  Support;
+  Support,
+  SampleConverter;
 
 const
   WM_FLUSH_COMPLETE = WM_USER + 1001;
   WM_MEDIA_FORMAT_CHANGED = WM_USER + 1002;
-  WM_SAMPLE_FOUND = WM_USER + 1003;
   WM_REQUEST_FLUSH = WM_USER + 1004;
 
 type
@@ -94,7 +94,7 @@ type
   private
     FMessageHandler: TMessageHandler;
     FFindingSample: Boolean;
-    FSampleReply: TSampleReply;
+
     FMaxCalcStartTime: TDateTime;
     FSampleReadCount: Integer;
     FCancelBurst: Boolean;
@@ -103,7 +103,6 @@ type
     procedure HandleMessages(var AMessage: TMessage;
                              var AHandled: Boolean);
     procedure NotifyMediaFormatChanged();
-    procedure HandleSampleFoundMessage(var AMessage: TMessage);
 
     {$region 'IMFSourceReaderCallback methods'}
     function OnReadSample(hrStatus: HRESULT;
@@ -120,10 +119,9 @@ type
 
   protected
     function ConfigureSourceReader(const AAttributes: IMFAttributes) : Boolean; override;
-    procedure ProcessSample(ASample: IMFSample); override;
+    procedure ProcessSample(const ASample: IMFSample); override;
     procedure Flush(); override;
     procedure ResetVariables(); override;
-
   public
     constructor Create(); override;
     destructor Destroy(); override;
@@ -254,21 +252,33 @@ begin
 end;
 
 
-procedure TCameraCaptureAsync.ProcessSample(ASample: IMFSample);
+procedure TCameraCaptureAsync.ProcessSample(const ASample: IMFSample);
+var
+  oData: TMemoryStream;
+  sError : string;
 begin
-  // Note: This will be called in a worker thread.
-  // _AddRef will be called, so the sample will not be released until the message is handled.
-  FSampleReply.oSample := ASample;
-
-  if not PostMessage(FMessageHandler.Handle,
-                     WM_SAMPLE_FOUND,
-                     0,
-                     LPARAM(@FSampleReply)) then
+  //  Note: This will be called in a worker thread.
+  if SampleConverter.DataFromSample(ASample,
+                                    VideoInfo,
+                                    sError,
+                                    oData) then
     begin
-      SafeRelease(FSampleReply.oSample);
-    end;
+    // Synchronize back to main thread with the image data.
+    // This will be called even with capture preview disabled.
+     TThread.Synchronize(nil,
+        procedure
+        begin
+          OnFrameDataFound(oData);
+        end
+      );
+    end
+  else
+    begin
+      Log('Failed to return data from frame sample: ' + sError,
+          ltError);
+   end;
 
-  HandleThreadMessages(GetCurrentThread());
+ HandleThreadMessages(GetCurrentThread());
 end;
 
 
@@ -312,7 +322,6 @@ begin
     Log('Failed to configure source reader callback',
         ltError);
 end;
-
 
 procedure TCameraCaptureAsync.StartBurst();
 var
@@ -360,34 +369,9 @@ begin
       AHandled := True;
       HandleMediaFormatChanged();
     end
-  else if AMessage.Msg = WM_SAMPLE_FOUND then
-    begin
-      AHandled := True;
-      HandleSampleFoundMessage(AMessage);
-    end
   else
     AHandled := False;
 end;
-
-
-procedure TCameraCaptureAsync.HandleSampleFoundMessage(var AMessage: TMessage);
-var
-  oSampleReply: PSampleReply;
-begin
-  oSampleReply := PSampleReply(AMessage.LPARAM);
-
-  if FCancelBurst then
-  begin
-    if Assigned(oSampleReply.oSample) then
-    begin
-      oSampleReply.oSample.RemoveAllBuffers;
-      SafeRelease(oSampleReply.oSample);
-    end;
-  end
-  else
-    ReturnDataFromSample(oSampleReply.oSample)
-end;
-
 
 procedure TCameraCaptureAsync.NotifyMediaFormatChanged();
 begin

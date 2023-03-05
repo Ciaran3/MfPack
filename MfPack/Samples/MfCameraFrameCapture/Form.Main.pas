@@ -486,22 +486,21 @@ end;
 
 procedure TFrmMain.HandleFrameDataFound(AMemoryStream: TMemoryStream);
 begin
-  FImageCleared := False;
-  UpdateReturnTimer;
-
   try
-    CopyStream(AMemoryStream);
+    FImageCleared := False;
+    UpdateReturnTimer;
+
+    if chkDisplayPreview.Checked then
+    begin
+      CopyStream(AMemoryStream);
+      LoadImageFromStream();
+      PaintLastCapture();
+    end;
+
+    HandleBurstMode();
   finally
-    AMemoryStream.Free();
+    AMemoryStream.Free;
   end;
-
-  if chkDisplayPreview.Checked then
-  begin
-    LoadImageFromStream();
-    PaintLastCapture();
-  end;
-
-  HandleBurstMode();
 end;
 
 procedure TFrmMain.CopyStream(AMemoryStream: TMemoryStream);
