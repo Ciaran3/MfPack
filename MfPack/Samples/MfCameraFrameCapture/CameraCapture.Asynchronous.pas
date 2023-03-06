@@ -235,7 +235,8 @@ begin
                     if BurstEnabled then
                       ReadNextSample();
 
-                    ProcessSample(pSample);
+                    if not FCancelBurst then
+                      ProcessSample(pSample);
                   end;
 
                 FFindingSample := False;
