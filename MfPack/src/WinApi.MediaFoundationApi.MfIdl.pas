@@ -2769,7 +2769,7 @@ type
 
     function IsRateSupported(const fThin: BOOL;
                              const flRate: FLOAT;
-                             pflNearestSupportedRate: FLOAT = 0): HResult; stdcall;
+                             var pflNearestSupportedRate: FLOAT): HResult; stdcall;
 
   end;
   IID_IMFRateSupport = IMFRateSupport;
